@@ -1,0 +1,1406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeliverEase - Voice Response System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-elevated: #334155;
+            --accent: #10b981;
+            --accent-glow: rgba(16, 185, 129, 0.3);
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --border: #475569;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+            padding-bottom: 100px;
+        }
+
+        .app-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-card);
+            padding: 20px;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .agent-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid var(--accent);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        .header h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 24px;
+            margin: 12px 0 4px 0;
+        }
+
+        .header p {
+            color: var(--text-dim);
+            font-size: 14px;
+        }
+
+        /* Active Order */
+        .order-card {
+            margin: 20px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .order-id {
+            font-family: 'Space Grotesk', monospace;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .customer-info {
+            display: flex;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-radius: 12px;
+        }
+
+        .customer-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .customer-details h3 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .customer-phone {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: var(--text-dim);
+        }
+
+        /* INCOMING CALL - RINGING STATE */
+        .call-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.98);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .call-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Ringing Animation */
+        .call-animation {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--danger), #dc2626);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 72px;
+            margin-bottom: 32px;
+            position: relative;
+            animation: ringPulse 1s ease-in-out infinite;
+        }
+
+        .call-animation.connected {
+            background: linear-gradient(135deg, var(--accent), #059669);
+            animation: none;
+        }
+
+        .call-animation.speaking {
+            animation: speakPulse 0.5s ease-in-out infinite;
+        }
+
+        @keyframes ringPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 40px rgba(239, 68, 68, 0);
+            }
+        }
+
+        @keyframes speakPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+            }
+            50% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 30px rgba(16, 185, 129, 0);
+            }
+        }
+
+        .call-state-label {
+            position: absolute;
+            top: -40px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--danger);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        .call-state-label.connected {
+            background: var(--accent);
+            animation: none;
+        }
+
+        .call-state-label.speaking {
+            background: #f59e0b;
+            animation: blink 0.5s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .call-info {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .call-info h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .call-info p {
+            color: var(--text-dim);
+            font-size: 16px;
+        }
+
+        .call-timer {
+            font-family: 'Space Grotesk', monospace;
+            font-size: 24px;
+            color: var(--accent);
+            margin-top: 12px;
+            font-weight: 700;
+        }
+
+        /* Speaking Indicator */
+        .speaking-indicator {
+            display: none;
+            background: rgba(245, 158, 11, 0.2);
+            border: 2px solid var(--warning);
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .speaking-indicator.active {
+            display: block;
+        }
+
+        .speaking-indicator .wave {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .speaking-indicator .wave span {
+            width: 4px;
+            height: 20px;
+            background: var(--warning);
+            border-radius: 2px;
+            animation: wave 1s ease-in-out infinite;
+        }
+
+        .speaking-indicator .wave span:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .speaking-indicator .wave span:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        .speaking-indicator .wave span:nth-child(4) {
+            animation-delay: 0.3s;
+        }
+
+        .speaking-indicator .wave span:nth-child(5) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes wave {
+            0%, 100% { height: 20px; }
+            50% { height: 40px; }
+        }
+
+        .speaking-text {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--warning);
+        }
+
+        /* Call Action Buttons */
+        .call-actions {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .call-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .call-btn::after {
+            content: attr(data-label);
+            position: absolute;
+            bottom: -24px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        .btn-reject {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-reject:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+
+        .btn-accept {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-accept:hover {
+            background: #059669;
+            transform: scale(1.1);
+        }
+
+        .btn-end {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-end:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+
+        .call-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Quick Response Interface (shown after accepting) */
+        .response-interface {
+            display: none;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        .response-interface.active {
+            display: block;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .response-prompt {
+            background: var(--bg-card);
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+
+        .response-prompt h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .response-prompt p {
+            color: var(--text-dim);
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .response-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .response-icon {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .response-icon:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+            box-shadow: 0 8px 24px var(--accent-glow);
+        }
+
+        .response-icon:active {
+            transform: translateY(-2px) scale(0.98);
+        }
+
+        .response-icon.speaking {
+            border-color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        .response-icon-symbol {
+            font-size: 36px;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .response-icon-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        /* Proactive Updates */
+        .section {
+            margin: 20px;
+        }
+
+        .section-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .proactive-icons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .icon-btn {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .icon-btn:hover {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+
+        .icon-btn-symbol {
+            font-size: 28px;
+            display: block;
+            margin-bottom: 6px;
+        }
+
+        .icon-btn-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+        }
+
+        /* Activity Log */
+        .activity-log {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            animation: slideIn 0.4s ease;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .activity-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .activity-icon.call {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .activity-icon.rejected {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        .activity-icon.voice {
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-type {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .activity-message {
+            font-size: 13px;
+            color: var(--text-dim);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .activity-detail {
+            background: var(--bg-elevated);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            border-left: 3px solid var(--accent);
+            margin-top: 8px;
+        }
+
+        .activity-time {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin-top: 4px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: var(--bg-card);
+            border: 2px solid var(--accent);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 32px var(--accent-glow);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 90%;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast-icon {
+            font-size: 24px;
+        }
+
+        .toast-content {
+            flex: 1;
+        }
+
+        .toast-title {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+
+        .toast-message {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        /* Help Banner */
+        .help-banner {
+            margin: 20px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+            border: 2px solid #3b82f6;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .help-banner h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .help-banner p {
+            font-size: 12px;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
+        .help-banner strong {
+            color: var(--text);
+        }
+
+        /* Simulate Call Button */
+        .simulate-call-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: var(--danger);
+            border: none;
+            color: white;
+            font-size: 32px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            transition: all 0.3s ease;
+            z-index: 100;
+            animation: wiggle 3s ease-in-out infinite;
+        }
+
+        @keyframes wiggle {
+            0%, 100% { transform: rotate(0deg); }
+            10%, 30% { transform: rotate(-15deg); }
+            20%, 40% { transform: rotate(15deg); }
+            50% { transform: rotate(0deg); }
+        }
+
+        .simulate-call-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6);
+            animation: none;
+        }
+
+        .simulate-call-btn:active {
+            transform: scale(0.95);
+        }
+
+        .simulate-label {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        /* Vibration effect */
+        @keyframes vibrate {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+
+        .vibrating {
+            animation: vibrate 0.1s linear infinite;
+        }
+
+        @media (max-width: 480px) {
+            .app-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="agent-badge">
+                🔇 Accessible Mode Active
+            </div>
+            <h1>Raj Kumar</h1>
+            <p>Delivery Agent • ID: DA8234</p>
+        </div>
+
+        <!-- Current Order -->
+        <div class="order-card">
+            <div class="order-header">
+                <div class="order-id">#OD937264</div>
+                <div style="font-size: 14px; color: var(--text-dim);">⏱️ <span id="orderTime">08:42</span> elapsed</div>
+            </div>
+
+            <div class="customer-info">
+                <div class="customer-avatar">AS</div>
+                <div class="customer-details">
+                    <h3>Ananya Sharma</h3>
+                    <div class="customer-phone">
+                        📞 +91 98765 43210
+                    </div>
+                    <div style="font-size: 13px; color: var(--text-dim); margin-top: 4px;">
+                        Whitefield, Bangalore • 2.3 km away
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Help Banner -->
+        <div class="help-banner">
+            <h4>🔊 REAL VOICE OUTPUT</h4>
+            <p><strong>When you tap an icon during a call, the message will SPEAK OUT LOUD from the phone!</strong><br>
+            Customer hears actual voice, not just text. Make sure your volume is up to test it!</p>
+            
+            <!-- Voice Settings -->
+            <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);">
+                <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 12px; font-weight: 600;">Voice Type:</label>
+                    <select id="voiceGender" onchange="updateVoicePreference()" style="background: var(--bg-card); color: var(--text); border: 1px solid var(--border); padding: 4px 8px; border-radius: 6px; font-size: 12px;">
+                        <option value="female">Female (Natural)</option>
+                        <option value="male">Male</option>
+                        <option value="auto">Best Available</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <label style="font-size: 12px; font-weight: 600;">Speech Speed:</label>
+                    <input type="range" id="speechRate" min="0.6" max="1.2" step="0.1" value="0.85" onchange="updateSpeechRate()" style="flex: 1;">
+                    <span id="rateValue" style="font-size: 12px; color: var(--accent); min-width: 40px;">0.85x</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proactive Updates -->
+        <div class="section">
+            <div class="section-title">
+                📤 Send Proactive Update
+            </div>
+            <div class="proactive-icons">
+                <div class="icon-btn" onclick="sendProactive('traffic')">
+                    <span class="icon-btn-symbol">🚦</span>
+                    <span class="icon-btn-label">Traffic</span>
+                </div>
+                <div class="icon-btn" onclick="sendProactive('nearby')">
+                    <span class="icon-btn-symbol">📍</span>
+                    <span class="icon-btn-label">Nearby</span>
+                </div>
+                <div class="icon-btn" onclick="sendProactive('5min')">
+                    <span class="icon-btn-symbol">⏰</span>
+                    <span class="icon-btn-label">5 Mins</span>
+                </div>
+                <div class="icon-btn" onclick="sendProactive('door')">
+                    <span class="icon-btn-symbol">🚪</span>
+                    <span class="icon-btn-label">At Door</span>
+                </div>
+                <div class="icon-btn" onclick="sendProactive('landmark')">
+                    <span class="icon-btn-symbol">🏢</span>
+                    <span class="icon-btn-label">Lost</span>
+                </div>
+                <div class="icon-btn" onclick="sendProactive('delivered')">
+                    <span class="icon-btn-symbol">✅</span>
+                    <span class="icon-btn-label">Delivered</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Log -->
+        <div class="section">
+            <div class="section-title">
+                📝 Communication Log
+            </div>
+            <div class="activity-log" id="activityLog">
+                <div class="activity-item">
+                    <div class="activity-icon">🎯</div>
+                    <div class="activity-content">
+                        <div class="activity-type">Order Started</div>
+                        <div class="activity-message">Picked up from restaurant</div>
+                        <div class="activity-time">8 minutes ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Call Overlay -->
+        <div class="call-overlay" id="callOverlay">
+            <div class="call-animation" id="callAnimation">
+                <div class="call-state-label" id="callStateLabel">INCOMING CALL</div>
+                📞
+            </div>
+            
+            <div class="call-info">
+                <h2>Ananya Sharma</h2>
+                <p id="callStatus">Customer is calling you...</p>
+                <div class="call-timer" id="callTimer">00:00</div>
+            </div>
+
+            <!-- Speaking Indicator -->
+            <div class="speaking-indicator" id="speakingIndicator">
+                <div class="wave">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+                <div class="speaking-text">🔊 Speaking voice message...</div>
+            </div>
+
+            <!-- Ringing State Actions -->
+            <div class="call-actions" id="ringingActions">
+                <button class="call-btn btn-reject" data-label="Reject" onclick="rejectCall()">
+                    ✕
+                </button>
+                <button class="call-btn btn-accept" data-label="Accept" onclick="acceptCall()">
+                    ✓
+                </button>
+            </div>
+
+            <!-- Connected State - Response Interface -->
+            <div class="response-interface" id="responseInterface">
+                <div class="response-prompt">
+                    <h3>🔊 Tap to Speak</h3>
+                    <p>Customer will hear REAL VOICE from phone speaker!</p>
+                </div>
+
+                <div class="response-grid" id="responseGrid">
+                    <div class="response-icon" onclick="respondToCall('traffic')">
+                        <span class="response-icon-symbol">🚦</span>
+                        <span class="response-icon-label">Traffic</span>
+                    </div>
+                    <div class="response-icon" onclick="respondToCall('nearby')">
+                        <span class="response-icon-symbol">📍</span>
+                        <span class="response-icon-label">Nearby</span>
+                    </div>
+                    <div class="response-icon" onclick="respondToCall('5min')">
+                        <span class="response-icon-symbol">⏰</span>
+                        <span class="response-icon-label">5 Mins</span>
+                    </div>
+                    <div class="response-icon" onclick="respondToCall('door')">
+                        <span class="response-icon-symbol">🚪</span>
+                        <span class="response-icon-label">At Door</span>
+                    </div>
+                    <div class="response-icon" onclick="respondToCall('landmark')">
+                        <span class="response-icon-symbol">🏢</span>
+                        <span class="response-icon-label">Need Help</span>
+                    </div>
+                    <div class="response-icon" onclick="respondToCall('arrived')">
+                        <span class="response-icon-symbol">✅</span>
+                        <span class="response-icon-label">Arrived</span>
+                    </div>
+                </div>
+
+                <div class="call-actions">
+                    <button class="call-btn btn-end" data-label="End Call" onclick="endCall()">
+                        📵
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notification -->
+        <div class="toast" id="toast">
+            <div class="toast-icon" id="toastIcon">✅</div>
+            <div class="toast-content">
+                <div class="toast-title" id="toastTitle">Response Sent</div>
+                <div class="toast-message" id="toastMessage">Customer heard voice message</div>
+            </div>
+        </div>
+
+        <!-- Simulate Call Button -->
+        <button class="simulate-call-btn" onclick="simulateIncomingCall()">
+            📞
+            <div class="simulate-label">TEST CALL</div>
+        </button>
+    </div>
+
+    <script>
+        // Text-to-Speech Engine
+        const synth = window.speechSynthesis;
+        let currentUtterance = null;
+
+        const responses = {
+            traffic: {
+                title: "Traffic Delay",
+                tts: "Hello, I'm stuck in traffic right now. I'll reach you in about 10 minutes. Sorry for the delay. Thank you for your patience.",
+                sms: "Stuck in traffic 🚦 Will reach in ~10 mins. Thanks for waiting!"
+            },
+            nearby: {
+                title: "Nearby",
+                tts: "Hi, I've reached your area and I'm looking for your building. I should be there in 2 to 3 minutes.",
+                sms: "I'm nearby! 📍 Looking for your building. Will reach in 2-3 mins."
+            },
+            '5min': {
+                title: "5 Minutes Away",
+                tts: "Hello, I am approximately 5 minutes away from your location. Please be ready to receive your order.",
+                sms: "5 minutes away ⏰ Please be ready to collect your order!"
+            },
+            door: {
+                title: "At Your Door",
+                tts: "Hi, I'm at your door right now. Please come and collect your order. Thank you.",
+                sms: "I'm at your door! 🚪 Please collect your order."
+            },
+            landmark: {
+                title: "Need Landmark",
+                tts: "Hello, I'm near your location but having trouble finding your exact building. Can you please share a nearby landmark or come outside? You can also call support to update the address.",
+                sms: "Having trouble finding your building 🏢 Can you share a landmark or meet me outside?"
+            },
+            delivered: {
+                title: "Delivered",
+                tts: "Your order has been delivered. Thank you for ordering with us. Enjoy your meal!",
+                sms: "Order delivered ✅ Thank you! Enjoy your meal 🍽️"
+            },
+            arrived: {
+                title: "Arrived",
+                tts: "I have arrived at your location. Please collect your order.",
+                sms: "Arrived! ✅ Please collect your order."
+            }
+        };
+
+        let callState = 'idle'; // idle, ringing, connected
+        let callStartTime;
+        let callTimerInterval;
+        let ringTimeout;
+        let isSpeaking = false;
+        let voicePreference = 'female';
+        let speechRate = 0.85;
+
+        // Update voice preference
+        function updateVoicePreference() {
+            voicePreference = document.getElementById('voiceGender').value;
+            showToast('✅ Voice Updated', `Set to ${voicePreference} voice`, 'success');
+        }
+
+        // Update speech rate
+        function updateSpeechRate() {
+            speechRate = parseFloat(document.getElementById('speechRate').value);
+            document.getElementById('rateValue').textContent = speechRate.toFixed(2) + 'x';
+        }
+
+        // Get best voice based on preference
+        function getBestVoice(voices, preference) {
+            let selectedVoice = null;
+            
+            if (preference === 'female') {
+                // Best female voices
+                const femaleNames = [
+                    'Samantha', 'Karen', 'Moira', 'Tessa', 'Victoria', 'Serena',
+                    'Google UK English Female', 'Google US English Female',
+                    'Microsoft Zira', 'Microsoft Aria'
+                ];
+                
+                for (const name of femaleNames) {
+                    selectedVoice = voices.find(v => v.name.includes(name));
+                    if (selectedVoice) break;
+                }
+                
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(v => 
+                        v.lang.startsWith('en') && 
+                        (v.name.toLowerCase().includes('female') || 
+                         v.name.toLowerCase().includes('woman'))
+                    );
+                }
+            } 
+            else if (preference === 'male') {
+                // Best male voices
+                const maleNames = [
+                    'Alex', 'Daniel', 'Tom', 'James',
+                    'Google UK English Male', 'Google US English Male',
+                    'Microsoft David', 'Microsoft Mark'
+                ];
+                
+                for (const name of maleNames) {
+                    selectedVoice = voices.find(v => v.name.includes(name));
+                    if (selectedVoice) break;
+                }
+                
+                if (!selectedVoice) {
+                    selectedVoice = voices.find(v => 
+                        v.lang.startsWith('en') && 
+                        (v.name.toLowerCase().includes('male') || 
+                         v.name.toLowerCase().includes('man'))
+                    );
+                }
+            }
+            
+            // Auto mode or fallback: get best quality voice
+            if (!selectedVoice) {
+                // Try to get premium/enhanced voices first
+                selectedVoice = voices.find(v => 
+                    v.lang.startsWith('en') && 
+                    (v.name.includes('Premium') || 
+                     v.name.includes('Enhanced') ||
+                     !v.localService) // Cloud voices usually better
+                );
+            }
+            
+            // Last resort: any English voice
+            if (!selectedVoice) {
+                selectedVoice = voices.find(v => v.lang.startsWith('en'));
+            }
+            
+            return selectedVoice;
+        }
+
+        // Speak text out loud using Web Speech API with natural human-like voice
+        function speakMessage(text, onEnd) {
+            // Stop any ongoing speech
+            if (isSpeaking) {
+                synth.cancel();
+            }
+
+            isSpeaking = true;
+            
+            // Add natural pauses for commas and periods
+            const naturalText = text
+                .replace(/,/g, ', ') // Slight pause after comma
+                .replace(/\./g, '. '); // Pause after period
+            
+            currentUtterance = new SpeechSynthesisUtterance(naturalText);
+            
+            // Set voice properties for MORE NATURAL sound
+            currentUtterance.rate = speechRate; // Use user's preference
+            currentUtterance.pitch = 1.1; // Slightly higher = friendlier
+            currentUtterance.volume = 1.0;
+            
+            // Get best natural-sounding voice based on user preference
+            const voices = synth.getVoices();
+            const selectedVoice = getBestVoice(voices, voicePreference);
+            
+            if (selectedVoice) {
+                currentUtterance.voice = selectedVoice;
+                console.log('🔊 Using voice:', selectedVoice.name, '| Language:', selectedVoice.lang);
+            }
+
+            // Show speaking indicator
+            document.getElementById('speakingIndicator').classList.add('active');
+            document.getElementById('callAnimation').classList.add('speaking');
+            document.getElementById('callStateLabel').classList.add('speaking');
+            document.getElementById('callStateLabel').textContent = 'SPEAKING...';
+
+            currentUtterance.onend = () => {
+                isSpeaking = false;
+                document.getElementById('speakingIndicator').classList.remove('active');
+                document.getElementById('callAnimation').classList.remove('speaking');
+                document.getElementById('callStateLabel').classList.remove('speaking');
+                document.getElementById('callStateLabel').textContent = 'CALL CONNECTED';
+                
+                // Remove speaking highlight from icon
+                document.querySelectorAll('.response-icon').forEach(icon => {
+                    icon.classList.remove('speaking');
+                });
+                
+                if (onEnd) onEnd();
+            };
+
+            currentUtterance.onerror = (error) => {
+                console.error('Speech error:', error);
+                isSpeaking = false;
+                document.getElementById('speakingIndicator').classList.remove('active');
+                showToast('⚠️ Voice Error', 'Could not play voice. Check browser permissions.', 'warning');
+            };
+
+            synth.speak(currentUtterance);
+        }
+
+        // Simulate incoming call
+        function simulateIncomingCall() {
+            if (callState !== 'idle') return;
+
+            callState = 'ringing';
+            document.getElementById('callOverlay').classList.add('active');
+            document.body.classList.add('vibrating');
+
+            // Show ringing UI
+            document.getElementById('callAnimation').className = 'call-animation';
+            document.getElementById('callStateLabel').className = 'call-state-label';
+            document.getElementById('callStateLabel').textContent = 'INCOMING CALL';
+            document.getElementById('callStatus').textContent = 'Customer is calling you...';
+            document.getElementById('ringingActions').style.display = 'flex';
+            document.getElementById('responseInterface').classList.remove('active');
+
+            // Start timer
+            callStartTime = Date.now();
+            callTimerInterval = setInterval(updateCallTimer, 1000);
+
+            // Add to activity log
+            addActivity('call', '📞 Incoming Call', 'Customer calling...', 'Just now', true);
+
+            // Auto-reject after 30 seconds if not answered
+            ringTimeout = setTimeout(() => {
+                if (callState === 'ringing') {
+                    customerHangUp();
+                }
+            }, 30000);
+        }
+
+        // Accept call
+        function acceptCall() {
+            if (callState !== 'ringing') return;
+
+            clearTimeout(ringTimeout);
+            callState = 'connected';
+            document.body.classList.remove('vibrating');
+
+            // Update UI to connected state
+            document.getElementById('callAnimation').classList.add('connected');
+            document.getElementById('callStateLabel').classList.add('connected');
+            document.getElementById('callStateLabel').textContent = 'CALL CONNECTED';
+            document.getElementById('callStatus').textContent = 'Tap icon to send voice message';
+            document.getElementById('ringingActions').style.display = 'none';
+            document.getElementById('responseInterface').classList.add('active');
+
+            // Log activity
+            addActivity('sent', '✅ Call Accepted', 'Connected to customer', 'Just now', false);
+
+            showToast('✅ Call Connected', 'Tap any icon to speak out loud!', 'success');
+
+            // Simulate customer hanging up after 25 seconds
+            setTimeout(() => {
+                if (callState === 'connected') {
+                    customerHangUp();
+                }
+            }, 25000);
+        }
+
+        // Reject call
+        function rejectCall() {
+            if (callState !== 'ringing') return;
+
+            clearTimeout(ringTimeout);
+            clearInterval(callTimerInterval);
+            callState = 'idle';
+            document.body.classList.remove('vibrating');
+
+            // Close overlay
+            document.getElementById('callOverlay').classList.remove('active');
+
+            // Send auto-message
+            const autoMsg = "I'm currently on a delivery and can't take calls. I'll send you updates via text message. You can also contact support for urgent changes. Thank you!";
+            
+            addActivity(
+                'rejected',
+                '❌ Call Rejected',
+                'Auto-message sent to customer',
+                'Just now',
+                false,
+                autoMsg
+            );
+
+            showToast('📵 Call Rejected', 'Auto-message sent to customer', 'success');
+        }
+
+        // Respond to call with icon - WITH REAL VOICE
+        function respondToCall(type) {
+            if (callState !== 'connected') return;
+
+            const response = responses[type];
+            
+            // Highlight the icon being spoken
+            event.currentTarget.classList.add('speaking');
+
+            // SPEAK THE MESSAGE OUT LOUD
+            speakMessage(response.tts, () => {
+                // After speaking is done
+                showToast('✅ Voice Sent', 'Customer heard your message!', 'success');
+            });
+
+            // Add to activity log
+            addActivity(
+                'voice',
+                `🔊 ${response.title}`,
+                response.sms,
+                'Just now',
+                false,
+                response.tts
+            );
+        }
+
+        // End call (agent action)
+        function endCall() {
+            if (callState !== 'connected') return;
+
+            // Stop any ongoing speech
+            if (isSpeaking) {
+                synth.cancel();
+                isSpeaking = false;
+            }
+
+            clearInterval(callTimerInterval);
+            callState = 'idle';
+            
+            document.getElementById('callOverlay').classList.remove('active');
+            document.getElementById('speakingIndicator').classList.remove('active');
+            
+            const duration = document.getElementById('callTimer').textContent;
+            addActivity('ended', '📵 Call Ended', `Duration: ${duration}`, 'Just now', false);
+
+            showToast('📵 Call Ended', 'You ended the call', 'success');
+        }
+
+        // Customer hangs up
+        function customerHangUp() {
+            if (callState === 'idle') return;
+
+            // Stop any ongoing speech
+            if (isSpeaking) {
+                synth.cancel();
+                isSpeaking = false;
+            }
+
+            clearInterval(callTimerInterval);
+            clearTimeout(ringTimeout);
+            const previousState = callState;
+            callState = 'idle';
+            document.body.classList.remove('vibrating');
+
+            document.getElementById('callOverlay').classList.remove('active');
+            document.getElementById('speakingIndicator').classList.remove('active');
+            
+            if (previousState === 'ringing') {
+                addActivity('ended', '📵 Missed Call', 'Customer hung up before you answered', 'Just now', false);
+                showToast('📵 Missed Call', 'Customer hung up. Send proactive update!', 'warning');
+            } else {
+                const duration = document.getElementById('callTimer').textContent;
+                addActivity('ended', '📵 Customer Hung Up', `Duration: ${duration}`, 'Just now', false);
+                showToast('📵 Call Ended', 'Customer hung up', 'success');
+            }
+        }
+
+        // Update call timer
+        function updateCallTimer() {
+            const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+            const mins = Math.floor(elapsed / 60);
+            const secs = elapsed % 60;
+            document.getElementById('callTimer').textContent = 
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        // Send proactive update (also with voice)
+        function sendProactive(type) {
+            const response = responses[type];
+            
+            // Speak it out loud
+            speakMessage(response.tts, () => {
+                showToast('📤 Update Sent', 'Voice message + SMS sent!', 'success');
+            });
+
+            addActivity(
+                'voice',
+                `🔊 ${response.title}`,
+                response.sms,
+                'Just now',
+                false,
+                response.tts
+            );
+        }
+
+        function addActivity(type, title, message, time, isCall = false, tts = null) {
+            const log = document.getElementById('activityLog');
+            const item = document.createElement('div');
+            item.className = 'activity-item';
+            
+            let iconClass = 'activity-icon';
+            if (isCall) iconClass += ' call';
+            if (type === 'rejected') iconClass += ' rejected';
+            if (type === 'voice') iconClass += ' voice';
+            
+            let icon = '📤';
+            if (isCall) icon = '📞';
+            else if (type === 'rejected') icon = '❌';
+            else if (type === 'ended') icon = '📵';
+            else if (type === 'voice') icon = '🔊';
+            
+            let detailHtml = '';
+            if (tts) {
+                detailHtml = `
+                    <div class="activity-detail">
+                        <div style="margin-bottom: 8px;"><strong>📱 SMS:</strong> "${message}"</div>
+                        <div><strong>🔊 Voice Spoken:</strong> "${tts}"</div>
+                    </div>
+                `;
+            }
+            
+            item.innerHTML = `
+                <div class="${iconClass}">${icon}</div>
+                <div class="activity-content">
+                    <div class="activity-type">${title}</div>
+                    <div class="activity-message">${message}</div>
+                    ${detailHtml}
+                    <div class="activity-time">${time}</div>
+                </div>
+            `;
+            
+            log.insertBefore(item, log.firstChild);
+        }
+
+        function showToast(title, message, type) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            
+            if (type === 'success') {
+                icon.textContent = '✅';
+            } else if (type === 'warning') {
+                icon.textContent = '⚠️';
+            }
+            
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMessage').textContent = message;
+            
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        // Update order timer
+        let orderSeconds = 522;
+        setInterval(() => {
+            orderSeconds++;
+            const mins = Math.floor(orderSeconds / 60);
+            const secs = orderSeconds % 60;
+            document.getElementById('orderTime').textContent = 
+                `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }, 1000);
+
+        // Load voices when available
+        if (synth.onvoiceschanged !== undefined) {
+            synth.onvoiceschanged = () => {
+                synth.getVoices();
+            };
+        }
+
+        // Auto-demo after 3 seconds
+        setTimeout(() => {
+            showToast('💡 Test Voice!', 'Click red phone → Accept → Tap icon to hear REAL voice!', 'success');
+        }, 2000);
+    </script>
+</body>
+</html>
