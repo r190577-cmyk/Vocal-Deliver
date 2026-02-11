@@ -79,6 +79,12 @@ Designed specially for accessibility and usability.
 Just download the HTML file and open it in any web browser.  
 The project will run automatically — no setup required.
 
+## ▶ How to Test the Project
+
+1. Download and open the HTML file in a web browser.
+2. Click on the 📞 Phone icon in the interface.
+3. Follow the on-screen instructions to start testing the features.
+
 
 # Food Delivery Accessibility System
 
